@@ -21,6 +21,9 @@ public:
     } else {
       bucket.push_back(elem);
       set_size++;
+      if (policy()) {
+        resize();
+      }
       return true;
     }
   }
@@ -60,6 +63,21 @@ private:
   std::vector<T>& GetBucket(T elem) {
     return table[std::hash<T>()(elem) % table.size()];
   }
+
+  bool policy() {
+    return set_size / table.size(); 
+  }
+
+  void resize() {
+    std::vector<std::vector<T>> old_table = table;
+    table = std::vector<std::vector<T>> (old_table.size() * 2);
+    for (auto& bucket : old_table){
+      for(auto& elem : bucket) {
+        GetBucket(elem).push_back(elem);
+      }
+    }
+  }
 };
+
 
 #endif // HASH_SET_SEQUENTIAL_H
