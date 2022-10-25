@@ -1,32 +1,107 @@
 #ifndef HASH_SET_STRIPED_H
 #define HASH_SET_STRIPED_H
 
+#include <atomic>
 #include <cassert>
+#include <iostream>
+#include <memory>
+#include <mutex>
+#include <vector>
 
 #include "src/hash_set_base.h"
 
 template <typename T> class HashSetStriped : public HashSetBase<T> {
 public:
-  explicit HashSetStriped(size_t /*initial_capacity*/) {}
+  explicit HashSetStriped(size_t initial_capacity) {
+    table = std::vector<std::vector<T>>(initial_capacity);
+    set_size = 0;
+    for (size_t i = 0; i < initial_capacity; i++) {
+      mutex_ptrs_.push_back(std::make_unique<std::mutex>());
+    }
+  }
 
-  bool Add(T /*elem*/) final {
-    assert(false && "Not implemented yet");
+  bool Add(T elem) final {
+    std::cout << "entered add" << "\n";
+    size_t elem_hash = std::hash<T>()(elem);
+    std::vector<T> &bucket = GetBucket(elem_hash);
+    std::unique_lock<std::mutex> uniqueLock(*GetLock(elem_hash));
+    if (VectorContains(bucket, elem)) {
+      return false;
+    } else {
+      bucket.push_back(elem);
+      set_size++;
+      if (policy()) {
+        uniqueLock.unlock();
+        resize();
+      }
+      return true;
+    }
+  }
+
+  bool Remove(T elem) final {
+    std::cout << "entered remove" << "\n";
+    size_t elem_hash = std::hash<T>()(elem);
+    std::vector<T> &bucket = GetBucket(elem_hash);
+    std::scoped_lock<std::mutex> scopedLock(*GetLock(elem_hash));
+    for (auto it = bucket.begin(); it != bucket.end(); it++) {
+      if (*it == elem) {
+        bucket.erase(it);
+        set_size--;
+        return true;
+      }
+    }
     return false;
   }
 
-  bool Remove(T /*elem*/) final {
-    assert(false && "Not implemented yet");
+  [[nodiscard]] bool Contains(T elem) final {
+    size_t elem_hash = std::hash<T>()(elem);
+    std::vector<T> &bucket = GetBucket(elem_hash);
+    std::scoped_lock<std::mutex> scopedLock(*GetLock(elem_hash));
+    return VectorContains(bucket, elem);
+  }
+
+  [[nodiscard]] size_t Size() const final { return set_size; }
+
+private:
+  std::atomic<std::size_t> set_size;
+  std::vector<std::vector<T>> table;
+  std::vector<std::unique_ptr<std::mutex>> mutex_ptrs_;
+
+  bool VectorContains(std::vector<T> &v, const T &elem) {
+    for (auto it = v.begin(); it != v.end(); it++) {
+      if (*it == elem) {
+        return true;
+      }
+    }
     return false;
   }
 
-  [[nodiscard]] bool Contains(T /*elem*/) final {
-    assert(false && "Not implemented yet");
-    return false;
+  std::vector<T> &GetBucket(size_t hash) { return table[hash % table.size()]; }
+
+  std::unique_ptr<std::mutex> &GetLock(size_t hash) {
+    return mutex_ptrs_[hash % mutex_ptrs_.size()];
   }
 
-  [[nodiscard]] size_t Size() const final {
-    assert(false && "Not implemented yet");
-    return 0u;
+  bool policy() { return set_size / table.size(); }
+
+  void resize() {
+    std::cout << "entered resize" << "\n";
+    size_t old_size = table.size();
+
+    std::vector<std::unique_ptr<std::scoped_lock<std::mutex>>> locks;
+    for(size_t i = 0; i < mutex_ptrs_.size(); i++) {
+      locks.push_back(std::make_unique<std::scoped_lock<std::mutex>>(*mutex_ptrs_[i]));
+    }
+
+    if (old_size == table.size()) {
+      std::vector<std::vector<T>> old_table = table;
+      table = std::vector<std::vector<T>>(old_table.size() * 2);
+      for (auto &bucket : old_table) {
+        for (auto &elem : bucket) {
+          GetBucket(std::hash<T>()(elem)).push_back(elem);
+        }
+      }
+    }
   }
 };
 
