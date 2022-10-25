@@ -16,13 +16,13 @@ public:
 
   bool Add(T elem) final {
     std::scoped_lock<std::mutex> lock(mutex_);
-    std::vector<T>& bucket = GetBucket(elem);
+    std::vector<T> &bucket = GetBucket(elem);
     if (VectorContains(bucket, elem)) {
       return false;
     } else {
       bucket.push_back(elem);
       set_size++;
-      if(policy()){
+      if (policy()) {
         resize();
       }
       return true;
@@ -31,7 +31,7 @@ public:
 
   bool Remove(T elem) final {
     std::scoped_lock<std::mutex> lock(mutex_);
-    std::vector<T>& bucket = GetBucket(elem);
+    std::vector<T> &bucket = GetBucket(elem);
     for (auto it = bucket.begin(); it != bucket.end(); it++) {
       if (*it == elem) {
         bucket.erase(it);
@@ -44,7 +44,7 @@ public:
 
   [[nodiscard]] bool Contains(T elem) final {
     std::scoped_lock<std::mutex> lock(mutex_);
-    std::vector<T>& bucket = GetBucket(elem);
+    std::vector<T> &bucket = GetBucket(elem);
     return VectorContains(bucket, elem);
   }
 
@@ -55,7 +55,7 @@ private:
   std::vector<std::vector<T>> table_;
   std::mutex mutex_;
 
-  bool VectorContains(std::vector<T>& v, const T& elem) {
+  bool VectorContains(std::vector<T> &v, const T &elem) {
     for (auto it = v.begin(); it != v.end(); it++) {
       if (*it == elem) {
         return true;
@@ -64,23 +64,20 @@ private:
     return false;
   }
 
-  std::vector<T>& GetBucket(T elem) {
+  std::vector<T> &GetBucket(T elem) {
     return table_[std::hash<T>()(elem) % table_.size()];
   }
 
-  bool policy() {
-    return set_size / table_.size() > 4;
-  }
+  bool policy() { return set_size / table_.size() > 4; }
 
   void resize() {
     std::vector<std::vector<T>> old_table = table_;
-    table_ =  std::vector<std::vector<T>> (old_table.size() * 2);
-    for (auto& bucket : old_table){
-      for(auto& elem : bucket) {
+    table_ = std::vector<std::vector<T>>(old_table.size() * 2);
+    for (auto &bucket : old_table) {
+      for (auto &elem : bucket) {
         GetBucket(elem).push_back(elem);
       }
     }
   }
-  
 };
 #endif // HASH_SET_COARSE_GRAINED_H

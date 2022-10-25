@@ -3,7 +3,6 @@
 
 #include <cassert>
 #include <vector>
-#include <iostream>
 
 #include "src/hash_set_base.h"
 
@@ -15,7 +14,7 @@ public:
   }
 
   bool Add(T elem) final {
-    std::vector<T>& bucket = GetBucket(elem);
+    std::vector<T> &bucket = GetBucket(elem);
     if (VectorContains(bucket, elem)) {
       return false;
     } else {
@@ -29,7 +28,7 @@ public:
   }
 
   bool Remove(T elem) final {
-    std::vector<T>& bucket = GetBucket(elem);
+    std::vector<T> &bucket = GetBucket(elem);
     for (auto it = bucket.begin(); it != bucket.end(); it++) {
       if (*it == elem) {
         bucket.erase(it);
@@ -41,7 +40,7 @@ public:
   }
 
   [[nodiscard]] bool Contains(T elem) final {
-    std::vector<T>& bucket = GetBucket(elem);
+    std::vector<T> &bucket = GetBucket(elem);
     return VectorContains(bucket, elem);
   }
 
@@ -51,7 +50,7 @@ private:
   size_t set_size;
   std::vector<std::vector<T>> table;
 
-  bool VectorContains(std::vector<T>& v, const T& elem) {
+  bool VectorContains(std::vector<T> &v, const T &elem) {
     for (auto it = v.begin(); it != v.end(); it++) {
       if (*it == elem) {
         return true;
@@ -60,24 +59,21 @@ private:
     return false;
   }
 
-  std::vector<T>& GetBucket(T elem) {
+  std::vector<T> &GetBucket(T elem) {
     return table[std::hash<T>()(elem) % table.size()];
   }
 
-  bool policy() {
-    return set_size / table.size(); 
-  }
+  bool policy() { return set_size / table.size(); }
 
   void resize() {
     std::vector<std::vector<T>> old_table = table;
-    table = std::vector<std::vector<T>> (old_table.size() * 2);
-    for (auto& bucket : old_table){
-      for(auto& elem : bucket) {
+    table = std::vector<std::vector<T>>(old_table.size() * 2);
+    for (auto &bucket : old_table) {
+      for (auto &elem : bucket) {
         GetBucket(elem).push_back(elem);
       }
     }
   }
 };
-
 
 #endif // HASH_SET_SEQUENTIAL_H
