@@ -19,8 +19,8 @@ public:
     }
   }
 
-  // Finds the bucket corresponding to the elems hash and inserts the element to that bucket
-  // Unique lock is needed here to unlock before call to Resize()
+  // Finds the bucket corresponding to the elems hash and inserts the element to
+  // that bucket Unique lock is needed here to unlock before call to Resize()
   bool Add(T elem) final {
     size_t elem_hash = std::hash<T>()(elem);
     std::unique_lock<std::mutex> uniqueLock(*GetLock(elem_hash));
@@ -31,7 +31,7 @@ public:
       bucket.push_back(elem);
       set_size_++;
       if (Policy()) {
-        // Cannot hold any locks when calling resize as 
+        // Cannot hold any locks when calling resize as
         uniqueLock.unlock();
         Resize();
       }
@@ -39,7 +39,8 @@ public:
     }
   }
 
-  // Finds the bucket corresponding to the elems hash and removes the element from that bucket
+  // Finds the bucket corresponding to the elems hash and removes the element
+  // from that bucket
   bool Remove(T elem) final {
     size_t elem_hash = std::hash<T>()(elem);
     std::scoped_lock<std::mutex> scopedLock(*GetLock(elem_hash));
@@ -80,9 +81,11 @@ private:
     return false;
   }
 
-  std::vector<T> &GetBucket(size_t hash) { return table_[hash % table_.size()]; }
+  std::vector<T> &GetBucket(size_t hash) {
+    return table_[hash % table_.size()];
+  }
 
-  // returns the the mutex corresponding to the hash, 
+  // returns the the mutex corresponding to the hash,
   std::mutex *GetLock(size_t hash) {
     return mutex_ptrs_[hash % mutex_ptrs_.size()].get();
   }
@@ -94,9 +97,10 @@ private:
   void Resize() {
     size_t old_size = table_.size();
 
-
-    //Locks every mutex in a list of scopedlocks, ensures the set is not modified during resizing.
-    // These locks are unlocked once resising finishes (assumes no locks are held)
+    // Locks every mutex in a list of scopedlocks, ensures the set is not
+    // modified during resizing.
+    // These locks are unlocked once resising finishes (assumes no locks are
+    // held)
     std::vector<std::unique_ptr<std::scoped_lock<std::mutex>>> locks;
     for (size_t i = 0; i < mutex_ptrs_.size(); i++) {
       locks.push_back(
@@ -114,7 +118,5 @@ private:
     }
   }
 };
-
-
 
 #endif // HASH_SET_STRIPED_H
