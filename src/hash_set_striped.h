@@ -3,7 +3,6 @@
 
 #include <atomic>
 #include <cassert>
-#include <iostream>
 #include <memory>
 #include <mutex>
 #include <vector>
@@ -44,7 +43,6 @@ public:
   bool Remove(T elem) final {
     size_t elem_hash = std::hash<T>()(elem);
     std::scoped_lock<std::mutex> scopedLock(*GetLock(elem_hash));
-    //std::cout << "got lock as " << scopedLock << "\n";
     std::vector<T> &bucket = GetBucket(elem_hash);
     for (auto it = bucket.begin(); it != bucket.end(); it++) {
       if (*it == elem) {
