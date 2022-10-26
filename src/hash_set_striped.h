@@ -21,10 +21,9 @@ public:
   }
 
   bool Add(T elem) final {
-    std::cout << "entered add" << "\n";
     size_t elem_hash = std::hash<T>()(elem);
-    std::vector<T> &bucket = GetBucket(elem_hash);
     std::unique_lock<std::mutex> uniqueLock(*GetLock(elem_hash));
+    std::vector<T> &bucket = GetBucket(elem_hash);
     if (VectorContains(bucket, elem)) {
       return false;
     } else {
@@ -39,10 +38,9 @@ public:
   }
 
   bool Remove(T elem) final {
-    std::cout << "entered remove" << "\n";
     size_t elem_hash = std::hash<T>()(elem);
-    std::vector<T> &bucket = GetBucket(elem_hash);
     std::scoped_lock<std::mutex> scopedLock(*GetLock(elem_hash));
+    std::vector<T> &bucket = GetBucket(elem_hash);
     for (auto it = bucket.begin(); it != bucket.end(); it++) {
       if (*it == elem) {
         bucket.erase(it);
@@ -55,9 +53,8 @@ public:
 
   [[nodiscard]] bool Contains(T elem) final {
     size_t elem_hash = std::hash<T>()(elem);
-    std::vector<T> &bucket = GetBucket(elem_hash);
     std::scoped_lock<std::mutex> scopedLock(*GetLock(elem_hash));
-    return VectorContains(bucket, elem);
+    return VectorContains(GetBucket(elem_hash), elem);
   }
 
   [[nodiscard]] size_t Size() const final { return set_size; }
@@ -85,7 +82,6 @@ private:
   bool policy() { return set_size / table.size(); }
 
   void resize() {
-    std::cout << "entered resize" << "\n";
     size_t old_size = table.size();
 
     std::vector<std::unique_ptr<std::scoped_lock<std::mutex>>> locks;
