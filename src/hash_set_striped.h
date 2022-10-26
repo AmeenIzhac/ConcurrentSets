@@ -85,8 +85,9 @@ private:
     size_t old_size = table.size();
 
     std::vector<std::unique_ptr<std::scoped_lock<std::mutex>>> locks;
-    for(size_t i = 0; i < mutex_ptrs_.size(); i++) {
-      locks.push_back(std::make_unique<std::scoped_lock<std::mutex>>(*mutex_ptrs_[i]));
+    for (size_t i = 0; i < mutex_ptrs_.size(); i++) {
+      locks.push_back(
+          std::make_unique<std::scoped_lock<std::mutex>>(*mutex_ptrs_[i]));
     }
 
     if (old_size == table.size()) {
