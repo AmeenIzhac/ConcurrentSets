@@ -20,6 +20,8 @@ public:
     }
   }
 
+  // Finds the bucket corresponding to the elems hash and inserts the element to that bucket
+  // Unique lock is needed here to unlock before call to Resize()
   bool Add(T elem) final {
     size_t elem_hash = std::hash<T>()(elem);
     std::unique_lock<std::mutex> uniqueLock(*GetLock(elem_hash));
@@ -29,17 +31,20 @@ public:
     } else {
       bucket.push_back(elem);
       set_size++;
-      if (policy()) {
+      if (Policy()) {
+        // Cannot hold any locks when calling resize as 
         uniqueLock.unlock();
-        resize();
+        Resize();
       }
       return true;
     }
   }
 
+  // Finds the bucket corresponding to the elems hash and removes the element from that bucket
   bool Remove(T elem) final {
     size_t elem_hash = std::hash<T>()(elem);
     std::scoped_lock<std::mutex> scopedLock(*GetLock(elem_hash));
+    //std::cout << "got lock as " << scopedLock << "\n";
     std::vector<T> &bucket = GetBucket(elem_hash);
     for (auto it = bucket.begin(); it != bucket.end(); it++) {
       if (*it == elem) {
@@ -51,19 +56,23 @@ public:
     return false;
   }
 
+  // Returns true if the element is contained in the HashSet and false otherwise
   [[nodiscard]] bool Contains(T elem) final {
     size_t elem_hash = std::hash<T>()(elem);
     std::scoped_lock<std::mutex> scopedLock(*GetLock(elem_hash));
     return VectorContains(GetBucket(elem_hash), elem);
   }
 
+  // Returns total size of HashSet
   [[nodiscard]] size_t Size() const final { return set_size; }
 
 private:
   std::atomic<std::size_t> set_size;
   std::vector<std::vector<T>> table;
+  // List of mutexes corresponding to every initial bucket bucket
   std::vector<std::unique_ptr<std::mutex>> mutex_ptrs_;
 
+  // Helper to Contains returning true iff an element is contained in a bucket
   bool VectorContains(std::vector<T> &v, const T &elem) {
     for (auto it = v.begin(); it != v.end(); it++) {
       if (*it == elem) {
@@ -75,15 +84,21 @@ private:
 
   std::vector<T> &GetBucket(size_t hash) { return table[hash % table.size()]; }
 
-  std::unique_ptr<std::mutex> &GetLock(size_t hash) {
-    return mutex_ptrs_[hash % mutex_ptrs_.size()];
+  // returns the the mutex corresponding to the hash, 
+  std::mutex *GetLock(size_t hash) {
+    return mutex_ptrs_[hash % mutex_ptrs_.size()].get();
   }
 
-  bool policy() { return set_size / table.size(); }
+  // Average length of bucket is greater than 4
+  bool Policy() { return set_size / table.size(); }
 
-  void resize() {
+  // Doubles bucket vector and puts elements into new buckets
+  void Resize() {
     size_t old_size = table.size();
 
+
+    //Locks every mutex in a list of scopedlocks, ensures the set is not modified during resizing.
+    // These locks are unlocked once resising finishes (assumes no locks are held)
     std::vector<std::unique_ptr<std::scoped_lock<std::mutex>>> locks;
     for (size_t i = 0; i < mutex_ptrs_.size(); i++) {
       locks.push_back(
@@ -101,5 +116,7 @@ private:
     }
   }
 };
+
+
 
 #endif // HASH_SET_STRIPED_H

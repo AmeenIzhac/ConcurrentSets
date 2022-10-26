@@ -14,7 +14,8 @@ public:
     set_size_ = 0;
   }
 
-  // Finds the bucket corresponding to the elems hash and inserts the element to that bucket
+  // Finds the bucket corresponding to the elems hash and inserts the element to
+  // that bucket
   bool Add(T elem) final {
     std::scoped_lock<std::mutex> lock(mutex_);
     std::vector<T> &bucket = GetBucket(elem);
@@ -30,7 +31,8 @@ public:
     }
   }
 
-// Finds the bucket corresponding to the elems hash and removes the element from that bucket
+  // Finds the bucket corresponding to the elems hash and removes the element
+  // from that bucket
   bool Remove(T elem) final {
     std::scoped_lock<std::mutex> lock(mutex_);
     std::vector<T> &bucket = GetBucket(elem);
@@ -44,14 +46,14 @@ public:
     return false;
   }
 
-// Returns true if the element is contained in the HashSet and false otherwise
+  // Returns true if the element is contained in the HashSet and false otherwise
   [[nodiscard]] bool Contains(T elem) final {
     std::scoped_lock<std::mutex> lock(mutex_);
     std::vector<T> &bucket = GetBucket(elem);
     return VectorContains(bucket, elem);
   }
 
-// Returns the total amount of elements in hashset
+  // Returns the total amount of elements in hashset
   [[nodiscard]] size_t Size() const final { return set_size_; }
 
 private:
@@ -69,7 +71,7 @@ private:
     return false;
   }
 
-// Helper to return corresponding bucket for elem based on it's hash
+  // Helper to return corresponding bucket for elem based on it's hash
   std::vector<T> &GetBucket(T elem) {
     return table_[std::hash<T>()(elem) % table_.size()];
   }
@@ -77,7 +79,8 @@ private:
   // Returns true iff the average bucket is holding more than 4 items
   bool Policy() { return set_size_ / table_.size() > 4; }
 
-  // Creates a new table twice the size of the old table and reinserts all the old elements
+  // Creates a new table twice the size of the old table and reinserts all the
+  // old elements
   void Resize() {
     std::vector<std::vector<T>> old_table = table_;
     table_ = std::vector<std::vector<T>>(old_table.size() * 2);
