@@ -13,8 +13,8 @@
 template <typename T> class HashSetStriped : public HashSetBase<T> {
 public:
   explicit HashSetStriped(size_t initial_capacity) {
-    table = std::vector<std::vector<T>>(initial_capacity);
-    set_size = 0;
+    table_ = std::vector<std::vector<T>>(initial_capacity);
+    set_size_ = 0;
     for (size_t i = 0; i < initial_capacity; i++) {
       mutex_ptrs_.push_back(std::make_unique<std::mutex>());
     }
@@ -30,7 +30,7 @@ public:
       return false;
     } else {
       bucket.push_back(elem);
-      set_size++;
+      set_size_++;
       if (Policy()) {
         // Cannot hold any locks when calling resize as 
         uniqueLock.unlock();
@@ -49,7 +49,7 @@ public:
     for (auto it = bucket.begin(); it != bucket.end(); it++) {
       if (*it == elem) {
         bucket.erase(it);
-        set_size--;
+        set_size_--;
         return true;
       }
     }
@@ -64,11 +64,11 @@ public:
   }
 
   // Returns total size of HashSet
-  [[nodiscard]] size_t Size() const final { return set_size; }
+  [[nodiscard]] size_t Size() const final { return set_size_; }
 
 private:
-  std::atomic<std::size_t> set_size;
-  std::vector<std::vector<T>> table;
+  std::atomic<std::size_t> set_size_;
+  std::vector<std::vector<T>> table_;
   // List of mutexes corresponding to every initial bucket bucket
   std::vector<std::unique_ptr<std::mutex>> mutex_ptrs_;
 
@@ -82,7 +82,7 @@ private:
     return false;
   }
 
-  std::vector<T> &GetBucket(size_t hash) { return table[hash % table.size()]; }
+  std::vector<T> &GetBucket(size_t hash) { return table_[hash % table_.size()]; }
 
   // returns the the mutex corresponding to the hash, 
   std::mutex *GetLock(size_t hash) {
@@ -90,11 +90,11 @@ private:
   }
 
   // Average length of bucket is greater than 4
-  bool Policy() { return set_size / table.size(); }
+  bool Policy() { return set_size_ / table_.size(); }
 
   // Doubles bucket vector and puts elements into new buckets
   void Resize() {
-    size_t old_size = table.size();
+    size_t old_size = table_.size();
 
 
     //Locks every mutex in a list of scopedlocks, ensures the set is not modified during resizing.
@@ -105,9 +105,9 @@ private:
           std::make_unique<std::scoped_lock<std::mutex>>(*mutex_ptrs_[i]));
     }
 
-    if (old_size == table.size()) {
-      std::vector<std::vector<T>> old_table = table;
-      table = std::vector<std::vector<T>>(old_table.size() * 2);
+    if (old_size == table_.size()) {
+      std::vector<std::vector<T>> old_table = table_;
+      table_ = std::vector<std::vector<T>>(old_table.size() * 2);
       for (auto &bucket : old_table) {
         for (auto &elem : bucket) {
           GetBucket(std::hash<T>()(elem)).push_back(elem);
